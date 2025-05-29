@@ -1,0 +1,92 @@
+```{r}
+# Read in the data
+data <- read.csv("data/cleaned_agora_inputs.csv")
+# Packages for writing latex
+library(texreg)
+```
+```{r}
+# Renaming columns for better readability
+# Custom topic labels by feeding in top words for a given topic to GPT for labeling
+colnames(data) <- c(
+  "Private Sector Focus", 
+  "Defense + Education",
+  "AI + Cybersecurity",
+  "Energy + Technology",
+  "Media + Privacy",
+  "Automated Decision Systems",
+  "Foreign Affairs",
+  "Healthcare Services",
+  "Government + Data Agencies",
+  "Blue State",
+  "Federal Legislation",
+  "Purple State",
+  "Red State",
+  "Successfully Enacted",
+  "Months after Feb 11, 2019"
+)
+```
+```{r}
+# Model 1: Basic model using only BERT topics
+basic_model <- glm(`Successfully Enacted` ~ 
+                     `Defense + Education` + 
+                     `AI + Cybersecurity` + 
+                     `Energy + Technology` + 
+                     `Media + Privacy` + 
+                     `Automated Decision Systems` + 
+                     `Foreign Affairs` + 
+                     `Healthcare Services` + 
+                     `Government + Data Agencies`,
+                   data = data, family = binomial)
+
+# Model 2: Adding entity fixed effects (state/federal)
+entity_fixed_effects <- glm(`Successfully Enacted` ~ 
+                              `Defense + Education` + 
+                              `AI + Cybersecurity` + 
+                              `Energy + Technology` + 
+                              `Media + Privacy` + 
+                              `Automated Decision Systems` + 
+                              `Foreign Affairs` + 
+                              `Healthcare Services` + 
+                              `Government + Data Agencies` +
+                              `Blue State` + `Purple State` + `Red State` +
+                              `Federal Legislation`
+                              ,
+                            data = data, family = binomial)
+
+# Model 3: Time fixed effects only
+time_fixed_effects <- glm(`Successfully Enacted` ~ 
+                            `Defense + Education` + 
+                            `AI + Cybersecurity` + 
+                            `Energy + Technology` + 
+                            `Media + Privacy` + 
+                            `Automated Decision Systems` + 
+                            `Foreign Affairs` + 
+                            `Healthcare Services` + 
+                            `Government + Data Agencies` + 
+                            `Months after Feb 11, 2019`,
+                          data = data, family = binomial)
+
+# Model 4: Two-way fixed effects (entity + time)
+two_way_fixed_effects <- glm(`Successfully Enacted` ~ 
+                               `Defense + Education` + 
+                               `AI + Cybersecurity` + 
+                               `Energy + Technology` + 
+                               `Media + Privacy` + 
+                               `Automated Decision Systems` + 
+                               `Foreign Affairs` + 
+                               `Healthcare Services` + 
+                               `Government + Data Agencies` +
+                               `Blue State` + `Purple State` + `Red State` + `Federal Legislation`,
+                             data = data, family = binomial)
+
+# Model 5: Full model using all variables
+two_way_with_controls <- glm(`Successfully Enacted` ~ ., data = data, family = binomial)
+```
+
+```{r}
+texreg(list(basic_model, entity_fixed_effects, time_fixed_effects, 
+            two_way_fixed_effects, two_way_with_controls),
+       custom.model.names = c("Basic Model", "Entity FE", "Time FE", "Two-Way", "Two-Way + Controls"),
+       caption = "Regression Results",
+       file = "models_output.tex")
+```

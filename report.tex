@@ -1,0 +1,159 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{booktabs}  % optional, for prettier tables
+\usepackage{changepage}
+\usepackage[margin=1in]{geometry}
+\usepackage{float}
+
+\begin{document}
+Emil to input NLP stuff here
+4. Methods (\~1000+ words)
+
+\begin{itemize}
+    \item Outline your approach. What tools will you use to solve your research problem?
+    \item E.g. for machine learning: What model will you use? How will you evaluate and validate your model? How will you interpret or explain your model? 
+    \item For an econometric analysis, write out your regression equation. What are the empirical assumptions, and how will you assess the robustness of your results?
+\end{itemize}
+\subsection{Methods}
+\subsubsection{Natural Language Processing}
+\subsubsection{Data Cleaning}
+
+Once we have the relevant BERT topics, we append this to the existing AGORA dataset. In order to further prepare the dataset for our regression, we first drop many features for the following reasons: 
+\begin{adjustwidth}{2em}{0em}
+\begin{enumerate}
+    \item \textbf{Irrelevance}: Features \textit{Unnamed: 0} or \textit{AGORA ID} are irrelevant to the analysis because they do not include meaningful information.
+    \item \textbf{Text-heavy}: After using the full text of the legislative acts to generate and assign our BERT Topic scores, the text entries are no longer relevant for our analysis.
+    \item \textbf{Collinearity}: To avoid collinearity in our regression, we preemptively drop columns like \textit{Collections} which we anticipate to be correlated with existing explanatory variables (in the case of \textit{Collections}, this would be the \textit{Authority} of the legislation).
+\end{enumerate}
+\end{adjustwidth}
+
+\noindent
+The second step in our preprocessing pipeline is to transform the \textit{Authority} field such that we can make better comparisons between the effect of entities. The initial distribution was very long-tailed with many entities having fewer than 3 pieces of legislation in the dataset. \textit{Authority} represents the given entity who is responsible for the piece of legislation. We first filter our observations to only entities in the United States. Then, we further divide entities into federal legislature (US Congress), federal executive (departments of the executive branch and the Executive Office of the President) and state governments. State governments are then grouped into blue, red, and purple given their political tendencies. Finally, we transform this into a one-hot encoding using the federal executive branch as the baseline for comparison.
+\\\\
+Third, we remove the existing content related metadata. In the dataset, there was a large amount of content-related metadata with boolean values. There were too many variables to run a meaningful analysis and inclusion of these measures risks collinearity with the BERT topic variables as both are measures of content. Finally, we consolidate the focus of the given legislation (government or private sector) into a single boolean variable and encode the date of most recent activity as an integer representing the number of months since the date of the first piece of legislation in our filtered dataset (Feb 11, 2019). We assume 30 days in a month for this measure. 
+
+\subsubsection{Regression}
+
+The simplest model using our BERT topic models regresses each BERT Topic $x_k$ on the binary representation of successful enactment (1). We chose to use a logit model in order to bound the predicted values between 0 and 1 and to allow for dynamic marginal effects. The logit model is the basis for all of our regressions. $P(Y=1)$ represents the probability that a proposed piece of legislation is successfully enacted. 
+
+\begin{equation}
+\log\left( \frac{P(Y=1)}{1 - P(Y=1)} \right) = \beta_0 + \sum_{k=1}^{K} \beta_k X_k
+\end{equation}
+
+We further expand this model with entity-fixed effects. This accounts for differences between the various state legislatures, the federal legislature, and the federal executive branch. Such effects could include procedural norms or other factors that differ between these entities but not over time. In (2), $\delta_j$ represents the entity specific effect for j.
+
+\begin{equation}
+\log\left( \frac{P(Y=1)}{1 - P(Y=1)} \right) = \beta_0 + \sum_{k=1}^{K} \beta_k X_k + \delta_j
+\end{equation}
+
+We also explored the impact of time fixed effects. Broad political environments change over time and as such across entities. Changing rollout of artificial intelligence across the country and other time-related factors may also influence the likelihood a piece of legislation is successfully enacted. In (3), $\delta_t$ represents the fixed effect for a given time frame. 
+
+\begin{equation}
+\log\left( \frac{P(Y=1)}{1 - P(Y=1)} \right) = \beta_0 + \sum_{k=1}^{K} \beta_k X_k + \alpha_t
+\end{equation}
+
+Then, we add controls and allowing for both time and fixed effects. Note that in this regression we do not allow for any interaction terms. This is explored later on. The control variable that had the most meaningful impact on our predictions is \textit{Private}, a boolean value reflecting whether a given piece of legislation is targeted at private sector entities or public sector entities. Theoretically, the target of legislation may affect its viability to be passed. 
+
+
+\begin{equation}
+\log\left( \frac{P(Y=1)}{1 - P(Y=1)} \right) = \beta_0 + \sum_{k=1}^{K} \beta_k X_k + \delta_j + \alpha_t + \beta_{k+1}Private
+\end{equation}
+
+Our final regression allows for interaction terms. We identified three interaction terms with significant impact on the predicted outcome of a given piece of legislation. All of these terms involve time which in our dataset is \textit{Months after Feb 11, 2019}. Here forward this is simply referred to as \textit{Time}. The first interaction term is the only interaction term between our entity and time fixed effects: \textit{Federal Legislation x Time}. We will discuss the exact implications of this in the results section; however, we felt a strong theoretical basis to include this interaction term as polarization within the US Congress has grown measurably over the past five years. The other interaction terms between entity and time effects had no significant impact and as such are not included in our model. The final two interaction terms present in our model are \textit{Media + Privacy X Time} and \textit{Defense + Education X Time}. The salience of privacy and defense has expanded over this time frame and as such an interaction term allows for a better representation of this empirical reality. 
+
+\begin{equation}
+\log\left( \frac{P(Y=1)}{1 - P(Y=1)} \right) = \beta_0 + \sum_{k=1}^{K} \beta_k X_k + \delta_j + \alpha_t + \beta_{k+1}Private + \beta_{k+2}Media*Time + \beta_{k+3}Defense*Time
+\end{equation}
+
+Using a logit regression requires several assumptions including:
+\\
+\begin{adjustwidth}{2em}{0em}
+\begin{enumerate}
+    \item \textbf{No collinearity of predictors}: We address this by dropping known collinear variables; however, the inter-related nature of legislation may mean that certain topics are collinear. We operate under the assumption that such topics are not collinear given their diversity. 
+    \item \textbf{Exogeneity}: We assume all predictors to be exogenous, meaning that for any \textit{X}, $cor(X,u) = 0$. This assumes no reverse causality, measurement errors nor omitted variable bias. [TODO How do we test this]
+    \item \textbf{Finite fourth moments}: We know know there are relatively few outliers since all values are bounded by time or binary constraints. Note that BERT Topics are constrained between 0 and 1. 
+\end{enumerate}
+\end{adjustwidth}
+
+Finally, to evaluate our model, we can compare the Akaike Information Criterion (AIC) scores between models. This is a valuable measure as it reflects the predictive power of the model but penalizes overfitting. The log-likelihood may also be helpful as another measure of fit. Other typical measures that come from the confusion matrix generated by a logit model do not make sense in our context as we are mostly concerned with which variables hold predictive power instead of the specific predictions of the model. 
+
+
+\subsection{Results}
+
+Following with the approach outlined in the regression above, the results from each stage of our regression analysis are included below. There were no meaningful lagged dependent variables to include.
+
+
+\begin{table}[H]
+\begin{center}
+\begin{tabular}{l c c c c c}
+\hline
+ & Basic Model & Entity FE & Time FE & Two-Way + Controls & With Interactions \\
+\hline
+(Intercept)                                       & $1.35$       & $4.85^{**}$   & $6.86^{***}$  & $14.72^{***}$ & $6.91^{*}$    \\
+                                                  & $(0.90)$     & $(1.68)$      & $(1.30)$      & $(2.30)$      & $(2.74)$      \\
+Defense + Education                             & $-0.14$      & $1.27$        & $-0.78$       & $1.12$        & $-11.80$      \\
+                                                  & $(1.03)$     & $(1.25)$      & $(1.11)$      & $(1.50)$      & $(6.02)$      \\
+AI + Cybersecurity                              & $0.82$       & $-1.14$       & $1.19$        & $-0.75$       & $0.59$        \\
+                                                  & $(1.51)$     & $(2.48)$      & $(1.59)$      & $(2.99)$      & $(3.88)$      \\
+Energy + Technology                             & $-3.02^{**}$ & $-1.86$       & $-3.30^{**}$  & $-1.79$       & $-1.40$       \\
+                                                  & $(1.10)$     & $(1.28)$      & $(1.20)$      & $(1.60)$      & $(1.98)$      \\
+Media + Privacy                                 & $-0.94$      & $-1.93$       & $-0.22$       & $-0.88$       & $-29.90^{**}$ \\
+                                                  & $(1.06)$     & $(1.33)$      & $(1.15)$      & $(1.68)$      & $(10.64)$     \\
+Automated Decision Systems                      & $-2.43^{*}$  & $-3.75^{**}$  & $-2.50^{*}$   & $-3.42^{*}$   & $-2.23$       \\
+                                                  & $(1.08)$     & $(1.34)$      & $(1.17)$      & $(1.59)$      & $(1.77)$      \\
+Foreign Affairs                                 & $-4.35^{**}$ & $-2.56$       & $-5.26^{**}$  & $-2.68$       & $-2.24$       \\
+                                                  & $(1.38)$     & $(1.37)$      & $(1.77)$      & $(1.79)$      & $(2.07)$      \\
+Healthcare Services                             & $-2.79^{*}$  & $-3.30^{*}$   & $-2.92^{*}$   & $-3.33$       & $-2.37$       \\
+                                                  & $(1.11)$     & $(1.43)$      & $(1.22)$      & $(1.73)$      & $(1.88)$      \\
+Government + Data Agencies                      & $-1.84$      & $-2.17$       & $-2.23$       & $-3.04$       & $-2.00$       \\
+                                                  & $(1.05)$     & $(1.31)$      & $(1.17)$      & $(1.71)$      & $(1.85)$      \\
+Blue State                                      &              & $-1.99$       &               & $-2.14$       & $-2.01$       \\
+                                                  &              & $(1.20)$      &               & $(1.25)$      & $(1.26)$      \\
+Purple State                                    &              & $-2.05$       &               & $-2.76^{*}$   & $-2.55$       \\
+                                                  &              & $(1.29)$      &               & $(1.35)$      & $(1.43)$      \\
+Red State                                       &              & $-0.43$       &               & $0.35$        & $0.04$        \\
+                                                  &              & $(1.37)$      &               & $(1.55)$      & $(1.52)$      \\
+Federal Legislation                             &              & $-4.47^{***}$ &               & $-6.11^{***}$ & $13.51^{***}$ \\
+                                                  &              & $(1.16)$      &               & $(1.22)$      & $(3.90)$      \\
+Time                      &              &               & $-0.10^{***}$ & $-0.16^{***}$ & $-0.05$       \\
+                                                  &              &               & $(0.01)$      & $(0.02)$      & $(0.03)$      \\
+Private Sector Focus                            &              &               &               & $-3.82^{***}$ & $-2.63^{***}$ \\
+                                                  &              &               &               & $(0.85)$      & $(0.79)$      \\
+Media + Privacy:Time     &              &               &               &               & $0.51^{**}$   \\
+                                                  &              &               &               &               & $(0.18)$      \\
+Defense + Education:Time &              &               &               &               & $0.26^{*}$    \\
+                                                  &              &               &               &               & $(0.11)$      \\
+Federal Legislation:Time &              &               &               &               & $-0.35^{***}$ \\
+                                                  &              &               &               &               & $(0.07)$      \\
+\hline
+AIC                                               & $493.01$     & $414.89$      & $420.47$      & $289.03$      & $246.77$      \\
+BIC                                               & $528.95$     & $466.82$      & $460.40$      & $348.94$      & $318.66$      \\
+Log Likelihood                                    & $-237.50$    & $-194.45$     & $-200.23$     & $-129.51$     & $-105.38$     \\
+Deviance                                          & $475.01$     & $388.89$      & $400.47$      & $259.03$      & $210.77$      \\
+Num. obs.                                         & $401$        & $401$         & $401$         & $401$         & $401$         \\
+\hline
+\multicolumn{6}{l}{\scriptsize{$^{***}p<0.001$; $^{**}p<0.01$; $^{*}p<0.05$}}
+\end{tabular}
+\caption{Regression Results}
+\label{table:coefficients}
+\end{center}
+\end{table}
+
+TODO go through each and explain the addition of each thing and how it changes
+
+Then can include the charts which are in the R doc that show the coefficients and how they hcange with the inclusion of interaction terms
+
+5. Results (\~500+ words)
+
+Report your results. Include at least one table and at least one graph.
+
+\begin{itemize}
+    \item Econometrics Papers: For the graph, you can do an event study, or a regression discontinuity plot, coefplot, and/or binscatter. For the regression table, include multiple specifications. (1) no fixed effects. (2) add fixed effects, (3) add trends, (4) add controls, (5) add lagged dependent variable, (6) etc.
+    \item ML/NLP Papers: Provide illustrations about how your system works and compare it to baselines. What useful information is learned?
+\end{itemize}
+
+6. Conclusion (\~100+ words)
+
+Discuss how your results add to the literature and your study's limitations. What could future work do to address these limitations?
+
+\end{document}
