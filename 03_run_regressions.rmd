@@ -66,27 +66,50 @@ time_fixed_effects <- glm(`Successfully Enacted` ~
                             `Months after Feb 11, 2019`,
                           data = data, family = binomial)
 
-# Model 4: Two-way fixed effects (entity + time)
-two_way_fixed_effects <- glm(`Successfully Enacted` ~ 
-                               `Defense + Education` + 
-                               `AI + Cybersecurity` + 
-                               `Energy + Technology` + 
-                               `Media + Privacy` + 
-                               `Automated Decision Systems` + 
-                               `Foreign Affairs` + 
-                               `Healthcare Services` + 
-                               `Government + Data Agencies` +
-                               `Blue State` + `Purple State` + `Red State` + `Federal Legislation`,
-                             data = data, family = binomial)
-
 # Model 5: Full model using all variables
-two_way_with_controls <- glm(`Successfully Enacted` ~ ., data = data, family = binomial)
+two_way_with_controls <- glm(`Successfully Enacted` ~ ., data = data, family = binomial) 
 ```
 
 ```{r}
-texreg(list(basic_model, entity_fixed_effects, time_fixed_effects, 
-            two_way_fixed_effects, two_way_with_controls),
-       custom.model.names = c("Basic Model", "Entity FE", "Time FE", "Two-Way", "Two-Way + Controls"),
+two_way_with_controls_and_interactions <- glm(`Successfully Enacted` ~ . + `Media + Privacy`:`Months after Feb 11, 2019` + `Defense + Education`:`Months after Feb 11, 2019` + `Federal Legislation`:`Months after Feb 11, 2019` , data = data, family = binomial)   
+summary(two_way_with_controls_and_interactions)
+```
+```{r}
+
+library(coefplot)
+library(ggplot2)
+
+clean_labels <- function(x) {
+  x <- gsub("`", "", x)  # remove backticks
+  x <- gsub("Months after Feb 11, 2019", "Time", x)
+  return(x)
+}
+
+# Create the plots without intercepts
+plot1 <- coefplot(two_way_with_controls_and_interactions, intercept = FALSE)
+plot2 <- coefplot(two_way_with_controls, intercept = FALSE)
+
+# Adjust plot1
+plot1 <- plot1 +
+  scale_y_discrete(labels = clean_labels) +
+  xlim(-50, 30) +
+  ylab("Explanatory Variable") +
+  ggtitle("Two Way FE + Controls + Interaction Terms")
+
+# Adjust plot2
+plot2 <- plot2 +
+  scale_y_discrete(labels = clean_labels) +
+  xlim(-50, 30) +
+  ylab("Explanatory Variable") +
+  ggtitle("Two Way FE")
+
+plot1
+plot2
+```
+```{r}
+texreg(list(basic_model, entity_fixed_effects, time_fixed_effects, two_way_with_controls, two_way_with_controls_and_interactions),
+       custom.model.names = c("Basic Model", "Entity FE", "Time FE", "Two-Way + Controls", "Two-Way + Controls + Interactions"),
        caption = "Regression Results",
-       file = "models_output.tex")
+       file = "models_output_initial.tex")
+
 ```
