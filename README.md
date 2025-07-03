@@ -1,6 +1,7 @@
-Initial thoughts
+## Replication Package
 
-(1) Many of these fields have a LOT of missing values. If you run 01 you can see this. The best field I have found so far to evaluate whether a bill is successful is the 'Yearly budget range' conditional on no cancellation date. 
-(2) I tried doing some basic LDA and BertTopic on the description field. LDA was not yielding anything super meaningful (not shocking considering the short format of descriptions), but perhaps there are things we can tweak there. BertTopic essentially leaves us with two topics: general AI policy and autonomous driving. This could be an interesting way to split the dataset, although doesn't make for the most fascinating NLP. 
-(3) I thought the following vars could be interesting to consider: Theme(s) / Theme Area(s), Policy instrument type, Is a structural reform ?, Has funding from private sector?, Responsible organisation(s), Country. We could group some of these or even try to standardize things like organization. 
-(4) The clear research question I could see us answering is what factors contribute / predict the funding of AI projects, adding in time & country fixed effects.
+All code is hosted in the main folder. Data and intermediate data is stored in and written to /data.
+
+02_data_cleaning.py requires a successful run of 01_nlp such that the file agora_topic_probabilities.csv exists in the /data folder. 
+
+03_run_regressions.rmd assumes cleaned_agora_inputs.csv exists and is stored in the /data folder.
