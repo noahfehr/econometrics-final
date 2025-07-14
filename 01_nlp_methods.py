@@ -18,6 +18,7 @@ from sentence_transformers import SentenceTransformer
 from umap import UMAP
 from hdbscan import HDBSCAN
 
+nltk.download('punkt_tab')
 nltk.download('punkt')
 nltk.download('stopwords')
 
@@ -43,7 +44,7 @@ def add_full_text(agora_id):
     return text
 
 
-def preprocess_text(text):
+def preprocess_text(text, common_law_terms):
     """
     Preprocess the full text of each bill text for the BERT model. This includes 
     setting all text to lowercase, tokenizing, removing stopwords and all legalese, 
@@ -51,6 +52,7 @@ def preprocess_text(text):
 
     Keyword arguemnts:
     text - full text for each law in the agora dataset
+    common_law_terms - list of common law terms found in bill archive
     """
     if isinstance(text, str):
         text = text.lower()
@@ -97,12 +99,12 @@ def get_sentences(text):
         sent.append(raw2)
     return sent
 
-if __name__ == '__main__':
+def main():
     df = pd.read_csv('agora/documents.csv')
 
     # add the full bill text to the dataframe via a column called full_text
     df["full_text"] = df["AGORA ID"].apply(add_full_text)
-    # df.to_csv('agora_raw.csv')
+    df.to_csv('data/agora_raw.csv')
 
     sample = list(df["full_text"])
 
@@ -138,19 +140,20 @@ if __name__ == '__main__':
     # append both list to get a list of legalese terms
     common_law_terms = common_law_terms + common_law_similar
 
-    df["full_text_preprocessed"] = df["full_text"].apply(preprocess_text)
-    # df.to_csv("agora_processed.csv")
+    df["full_text_preprocessed"] = df["full_text"].apply(preprocess_text, args=(common_law_terms,))
+    df.to_csv("data/agora_processed.csv")
 
     # instantiate BERTopic model
     embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
-    umap_model = UMAP(n_neighbors=15, n_components=5, min_dist=0.0, metric='cosine')
-    hdbscan_model = HDBSCAN(min_cluster_size=20, metric='euclidean', prediction_data=True)
+    umap_model = UMAP(n_neighbors=10, n_components=5, min_dist=0.0, metric='cosine')
+    hdbscan_model = HDBSCAN(min_cluster_size=5, metric='euclidean', prediction_data=True)
     topic_model = BERTopic(
         embedding_model=embedding_model,
         umap_model=umap_model,
         hdbscan_model=hdbscan_model,
-        min_topic_size=10,
+        min_topic_size=3,
         verbose=True,
+        nr_topics=9,
         calculate_probabilities=True
     )
 
@@ -166,11 +169,15 @@ if __name__ == '__main__':
     BERT_probs = pd.DataFrame(probs, columns=['BERT_topic0', 'BERT_topic1', 'BERT_topic2',
                                                'BERT_topic3', 'BERT_topic4', 'BERT_topic5', 
                                                'BERT_topic6', 'BERT_topic7'])
-    
+
     df = pd.concat([df, BERT_probs], axis=1)
 
     # remove all agora artifacts which are part of the topic -1 (dummy topic)
     dummy_topic_indices = np.where(np.array(topics) == -1)[0]
     df = df.drop(dummy_topic_indices)
     df = df.reset_index(drop=True)
-    # df.to_csv('agora_topic_probabilities.csv')
+    df.to_csv('data/agora_topic_probabilities.csv')
+
+
+if __name__ == '__main__':
+    main()
