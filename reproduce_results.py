@@ -1,4 +1,4 @@
-from data_cleaning import main
+from pipeline_code.data_cleaning import main
 import pandas as pd
 import subprocess
 
@@ -11,5 +11,5 @@ df_final = main(df)
 df_final.to_csv("data/cleaned_agora_inputs.csv", index=False)
 
 # Run R code which reads the csv file saved above and creates the html file which contains the results of this paper
-r_command = "options(repos = c(CRAN = 'https://cloud.r-project.org')); rmarkdown::render('run_regressions.rmd')"
+r_command = "options(repos = c(CRAN = 'https://cloud.r-project.org')); rmarkdown::render('pipeline_code/run_regressions.rmd')"
 subprocess.run(["Rscript", "-e", r_command])

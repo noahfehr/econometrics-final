@@ -1,6 +1,6 @@
 ```{r}
 # Read in the data
-data <- read.csv("data/cleaned_agora_inputs.csv")
+data <- read.csv("../data/cleaned_agora_inputs.csv")
 # Packages for writing latex
 library(texreg)
 ```
