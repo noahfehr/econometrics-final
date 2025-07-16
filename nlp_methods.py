@@ -82,7 +82,7 @@ def normalize_text(text):
     words = nopunc.split() # split into tokens
     nostop = [w for w in words if w not in stoplist] # remove stopwords
     no_numbers = [w if not w.isdigit() else '#' for w in nostop] # normalize numbers
-    stemmed = [stemmer.stem(w) for w in no_numbers] # stem each word
+    # stemmed = [stemmer.stem(w) for w in no_numbers] # stem each word
     return no_numbers
 
 
@@ -104,7 +104,7 @@ def main():
 
     # add the full bill text to the dataframe via a column called full_text
     df["full_text"] = df["AGORA ID"].apply(add_full_text)
-    df.to_csv('data/agora_raw.csv')
+    # df.to_csv('data/agora_raw.csv')
 
     sample = list(df["full_text"])
 
@@ -141,23 +141,26 @@ def main():
     common_law_terms = common_law_terms + common_law_similar
 
     df["full_text_preprocessed"] = df["full_text"].apply(preprocess_text, args=(common_law_terms,))
-    df.to_csv("data/agora_processed.csv")
+    # df.to_csv("data/agora_processed.csv")
 
     # instantiate BERTopic model
     embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
-    umap_model = UMAP(n_neighbors=10, n_components=5, min_dist=0.0, metric='cosine')
-    hdbscan_model = HDBSCAN(min_cluster_size=5, metric='euclidean', prediction_data=True)
+    umap_model = UMAP(n_neighbors=15, n_components=5, min_dist=0.0, metric='cosine')
+    hdbscan_model = HDBSCAN(min_cluster_size=20, metric='euclidean', prediction_data=True)
     topic_model = BERTopic(
         embedding_model=embedding_model,
         umap_model=umap_model,
         hdbscan_model=hdbscan_model,
-        min_topic_size=3,
+        min_topic_size=10,     # Merges tiny topics into larger ones, when set to 20 only 2 topics
         verbose=True,
-        nr_topics=9,
-        calculate_probabilities=True
+        calculate_probabilities=True,
     )
 
-    topics, probs = topic_model.fit_transform(df['full_text_preprocessed'])
+    # want exactly 8 BERT topics!
+    num_topics = 0
+    while num_topics != 9:
+        topics, probs = topic_model.fit_transform(df['full_text_preprocessed'])
+        num_topics = len(topic_model.get_topics())
 
     print("\nTop words for each topic:")
     for topic_id in topic_model.get_topics():
@@ -176,7 +179,7 @@ def main():
     dummy_topic_indices = np.where(np.array(topics) == -1)[0]
     df = df.drop(dummy_topic_indices)
     df = df.reset_index(drop=True)
-    df.to_csv('data/agora_topic_probabilities.csv')
+    # df.to_csv('data/agora_topic_probabilities.csv')
 
 
 if __name__ == '__main__':

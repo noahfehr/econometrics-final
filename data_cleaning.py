@@ -127,20 +127,16 @@ def exclude_content_metadata(df):
     df = df.apply(pd.to_numeric, errors='coerce')
     return df
 
-def main():
-    # Read in the intermediate data with BERT probabilities
-    df = pd.read_csv('data/agora_topic_probabilities.csv')
+def main(df):
     # Processing this data
     df = remove_irrelevant_columns(df)
     df = transform_authority(df)
     df = make_dummies_drop_baselines(df)
     df = fix_dates(df)
     df = exclude_content_metadata(df)
-    # Now write this to a csv in the data folder
-    df.to_csv('data/cleaned_agora_inputs.csv', index=False)
 
-if __name__ == "__main__":
-    main()
+    return df
+
 
 
 
