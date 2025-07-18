@@ -29,5 +29,7 @@ Add the topic probabilities of each topic to the .csv file
 ### cleaned_agora_inputs.csv
 Clean the dataset after running the `02_data_cleaning.py` file
 
-# Usge
-Please run `pip install -r requirements.txt` to download all the necessary package version necessary for this project. Afterwards, all the .py files can be ran with `python3 {01_nlp_methods | 02_data_cleaning | 03_run_regressions}.py`.
+# Usage
+In the project's root directory, run the command 'python3 reproduce_results.py'. This will create two files: agora_with_topic_probabilities.csv in the data/ folder which contains intermediate data and run_regressions.html in the pipeline_code/ folder which contains the results of this project. Please inspect the run_regressions.html file and compare the results to our paper. 
+If there are any missing libraries, these must be installed. 
+Note: the pipeline does not run the nlp_methods.py file because the results of the file are non-deterministic
