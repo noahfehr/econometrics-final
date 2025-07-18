@@ -2,11 +2,11 @@
 
 The .py files contain the code for this project. Below is a preview about the purpose of the code in each file:
 
-### 01_nlp_methods.py: 
+### nlp_methods.py: 
 Creates an extended dictionary of legal words with Glove word2vec and extracts topics via BERTopic
-### 02_data_cleaning.py: 
+### data_cleaning.py: 
 Requires a successful run of 01_nlp such that the file agora_topic_probabilities.csv exists in the /data folder. 
-### 03_run_regressions.rmd: 
+### run_regressions.rmd: 
 Assumes cleaned_agora_inputs.csv exists and is stored in the /data folder.
 
 # Data
